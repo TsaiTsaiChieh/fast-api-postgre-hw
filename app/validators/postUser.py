@@ -19,3 +19,7 @@ class PostUserIn(BaseModel):
     
 class PostUserOut(ResultResponse):
     id: int
+    
+class UserLoginIn(BaseModel):
+    account: constr(min_length=4, max_length=12)
+    password: constr(min_length=8, max_length=12)
