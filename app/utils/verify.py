@@ -1,7 +1,7 @@
 from app import settings
 from typing import Optional
 from datetime import datetime, timedelta
-from jose import JWTError, jwt
+from jose import JWTError, jwt, ExpiredSignatureError
 
 SECRET_KEY = settings.settings.secret_key
 ALGORITHM = settings.settings.algorithm
@@ -15,3 +15,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta]=None):
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encode_jwt = jwt.encode(to_encode, key=SECRET_KEY, algorithm=ALGORITHM)
+    return encode_jwt
+    
+def verify_token(token: str):
+    try:
+        return jwt.decode(token, key=SECRET_KEY, algorithms=[ALGORITHM])
+    except (JWTError, ExpiredSignatureError):
+        raise e
