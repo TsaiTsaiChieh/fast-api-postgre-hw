@@ -7,10 +7,13 @@ from alembic import context
 import sys
 sys.path.append("/Users/tsaitsaichieh/Desktop/python/fast-api-postgre-hw/")
 from app.db import schemas as models
+from app import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+section = config.config_ini_section
+config.set_section_option(section, "SQLALCHEMY.URL", settings.settings.database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
