@@ -4,7 +4,6 @@ from app import settings
 from db.schemas import User, LoginLog
 from db.connection import session
 from app.utils.verify import create_access_token, verify_token
-from app.validators.userLogin import UserLoginIn
 from app.utils.login_utils import getUserInfoByAccount, createUserItem, createLoginLogs
 from app.utils.schemas import UserRegisterSchema, UserRegisterOutSchema, UserLoginSchema, UserLoginOut
 
