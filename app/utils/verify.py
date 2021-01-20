@@ -1,7 +1,13 @@
-from app import settings
+#Standard
 from typing import Optional
 from datetime import datetime, timedelta
 from jose import JWTError, jwt, ExpiredSignatureError
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status
+#Project
+from app import settings
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 SECRET_KEY = settings.settings.secret_key
 ALGORITHM = settings.settings.algorithm
@@ -22,3 +28,13 @@ def verify_token(token: str):
         return jwt.decode(token, key=SECRET_KEY, algorithms=[ALGORITHM])
     except (JWTError, ExpiredSignatureError):
         raise e
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    print(token)
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    return payload
