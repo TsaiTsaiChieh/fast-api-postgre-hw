@@ -3,66 +3,60 @@ from app import settings
 
 from db.schemas import User, LoginLog
 from db.connection import session
-from app.validators.postUser import PostUserIn, PostUserOut
 from app.utils.verify import create_access_token, verify_token
-from app.validators.userLogin import UserLoginIn, UserLoginOut
+from app.validators.userLogin import UserLoginIn
+from app.utils.login_utils import getUserInfoByAccount, createUserItem, createLoginLogs
+from app.utils.schemas import UserRegisterSchema, UserRegisterOutSchema, UserLoginSchema, UserLoginOut
 
 router = APIRouter(
-    prefix=settings.settings.api_prefix, 
-    tags=["users"],
-    responses={403: {"description": "已有相同帳號註冊"}}
+    prefix=f'{settings.settings.api_prefix}/users', 
+    tags=["users"]
 )
     
 # 新增使用者    
-@router.post("/users/", response_model=PostUserOut)
-def postUser(user: PostUserIn) -> PostUserOut:
-    query = session.query(User).filter(User.account == user.account).first()
+@router.post("/", response_model=UserRegisterOutSchema)
+def postUser(user: UserRegisterSchema) -> UserRegisterOutSchema:
+    query = getUserInfoByAccount(user.account)
     
-    if query: 
-        print('Found user')
-        raise HTTPException(status_code=403, detail="已有相同帳號註冊")
+    if query:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="此帳號已被註冊")
     else:
-        data = User(name=user.name, account=user.account, password=user.password, active=True)
-        session.add(data)
-        id = session.query(User.id).filter(User.name == user.name).first()[0]
-        session.commit()
-        return {"resp_code": status.HTTP_200_OK, "resp_desc": "OK", "id": id}
-        # return PostUserOut(**{
-        #     "resp_code": status.HTTP_200_OK, 
-        #     "resp_desc": "OK",
-        #     "id": id[0]
-        # })
+        createUserItem(user)
+        return UserRegisterOutSchema(**{
+            "resp_code": status.HTTP_200_OK, 
+            "resp_desc": "OK",
+            "id": getUserInfoByAccount(user.account).id
+        })
 
 # 使用者登入驗證
-@router.post("/users/login", response_model=UserLoginOut)
-def userLogin(user: UserLoginIn, request: Request) -> UserLoginOut:
-    print(request.client)
-    userInfo = session.query(User).filter(User.account == user.account).first()
-    if (not userInfo.active): 
-        raise HTTPException(status_code=403, detail="帳號被停用")
+@router.post("/login", response_model=UserLoginOut)
+def userLogin(user: UserLoginSchema, request: Request) -> UserLoginOut:
+    query = getUserInfoByAccount(user.account)
+    if (not query.active): 
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="帳號被停用")
     
-    if (userInfo.password == user.password):
-        data = LoginLog(user_id=userInfo.id, login_ip=request.client.host)
-        session.add(data)
-        session.commit()
+    if (query.password == user.password):
+        createLoginLogs({"user_id": query.id, "login_ip": request.client.host})
         accessToken = create_access_token({
-            "name": userInfo.name,
-            "account": userInfo.account
+            "name": query.name,
+            "account": query.account
         })
         
-        return UserLoginOut(
-            **{"resp_code": status.HTTP_200_OK, 
-               "resp_desc": "OK",
-               "token": accessToken, 
-               "user":{
-                   "id": userInfo.id,
-                   "account": userInfo.account,
-                   "name": userInfo.name,
-                   "active": userInfo.active,
-                   "created_at": userInfo.created_at,
-                   "updated_at": userInfo.updated_at
-                      }
-               }
-            )
+        return UserLoginOut(**{
+            "resp_code": status.HTTP_200_OK, 
+            "resp_desc": "OK",
+            "token": accessToken, 
+            "user":{
+                "id": query.id,
+                "account": query.account,
+                "name": query.name,
+                "active": query.active,
+                "created_at": query.created_at,
+                "updated_at": query.updated_at
+            }})
     else:
-        raise HTTPException(status_code=401, detail="帳號密碼錯誤")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="帳號密碼錯誤")
+    
+# @router.get("/users/test_token")
+# def testToken():
+    
